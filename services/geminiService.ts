@@ -1,37 +1,32 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import type { ModerationResult } from '../types';
 
-// This function safely accesses the environment variable, preventing a crash
-// in browser environments where `process` is not defined. This is a common
-// issue when deploying to platforms like Vercel.
-const getApiKey = (): string | undefined => {
-  try {
-    // Check if `process` and `process.env` exist before trying to access the API key.
-    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-      return process.env.API_KEY;
-    }
-    return undefined;
-  } catch (e) {
-    console.error("Could not access process.env.API_KEY. This is normal in some environments.", e);
-    return undefined;
-  }
-};
-
-const API_KEY = getApiKey();
 export let ai: GoogleGenAI | null = null;
 
-// Initialize the AI service only if the key is available.
-// A try/catch block adds an extra layer of protection against initialization errors.
-if (API_KEY) {
-  try {
-    ai = new GoogleGenAI({ apiKey: API_KEY });
-  } catch(e) {
-    console.error("Failed to initialize GoogleGenAI, AI features will be disabled.", e);
-    ai = null;
+try {
+  // This is the definitive way to access environment variables on Vercel.
+  // Vercel's build process securely replaces `process.env.API_KEY`
+  // with the secret key you've set in your project settings.
+  const apiKey = process.env.API_KEY;
+
+  if (apiKey) {
+    // If the API key is present, the AI client is initialized and all
+    // AI-powered features in the app will be fully functional.
+    ai = new GoogleGenAI({ apiKey: apiKey });
+  } else {
+    // If the API_KEY variable is not set in your Vercel project, this message
+    // will appear in the browser's console. The app will run in a non-AI mode.
+    console.log("AI features disabled. To enable, please set the API_KEY environment variable in your Vercel project settings.");
   }
-} else {
-  console.error("CRITICAL: API_KEY environment variable not set. ZenVibe's AI features will be disabled.");
+} catch (error) {
+  // This safety block prevents the app from crashing if it's run in an
+  // environment where `process.env` is not available. This ensures the app
+  // always loads, even if the environment is misconfigured.
+  console.warn("Could not access environment variables. AI features are disabled.");
+  ai = null;
 }
+
 
 const moderationSchema = {
   type: Type.OBJECT,
